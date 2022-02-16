@@ -1,0 +1,60 @@
+name: "Setup a spring boot application to AWS Elastic App service"
+
+on:
+  workflow_dispatch:
+   inputs:
+     AWS_REGION_CODE:
+       required: true
+
+jobs:
+  stack-initialization:
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+    steps:
+      # checkout repository
+      - run: echo "Creating and deploying a spring boot application to AWS Elastic app service"
+      - name: checkout
+        uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+
+      # restructure repository
+      - name: move the file
+        run: |
+          mv ./Spring/gradle ./gradle
+          mv ./Spring/src ./src
+          mv ./Spring/.gitignore ./.gitignore
+          mv ./Spring/README.md ./README.md
+          mv ./Spring/build.gradle ./build.gradle
+          mv ./Spring/gradlew ./gradlew
+          mv ./Spring/gradlew.bat ./gradlew.bat
+          mv ./Spring/settings.gradle ./settings.gradle
+          rm -r ./Spring
+
+      - name: create a file and store AWS_REGION_CODE
+        run: |
+          regionName="${{ github.event.inputs.AWS_REGION_CODE }}"
+          echo "$regionName" > regionName 
+
+      # Setting up environment and checking builds
+      - name: Setup Java JDK
+        uses: actions/setup-java@v2.5.0
+        with:
+          distribution: 'adopt'
+          java-version: '8'
+          cache: 'gradle'
+          check-latest: true
+      - run: ./gradlew build --no-daemon
+
+      # Git Options
+      - name: Configure git
+        run: |
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+          git config --global user.name "${{ github.actor }}"
+          git remote set-url origin https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+      - name: Commit generated code and initialize workflows
+        run: |
+          git add .
+          git commit -m "Generate framework code and initialize workflows"
+          git push
